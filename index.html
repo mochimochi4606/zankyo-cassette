@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>残響カセット</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 夜の部屋に置いたカセットデッキ。上に入力切替と電源、テープ窓とVUメーター、下に「劣化のつまみ」群。単一ダーク（意図的） */
+:root{
+  --bg:#17131f;
+  --panel:#211b2c;
+  --panel-2:#2a2338;
+  --line:#3a3149;
+  --ink:#ece4f0;
+  --ink-dim:#a89bb5;
+  --peach:#f2c6a0;
+  --mist:#9fb7c9;
+  --rose:#d98ba0;
+  --f-display:"Zen Kurenaido","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
+  --f-mono:"DM Mono",ui-monospace,Consolas,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:auto;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding:20px 16px 40px;
+  background-image:radial-gradient(ellipse at 20% -10%,#3a2a4a55,transparent 60%),radial-gradient(ellipse at 90% 110%,#2a3a4a44,transparent 55%);
+  background-attachment:fixed;overflow-x:hidden}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 16px}
+.brand{min-width:0}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,6vw,42px);line-height:1.2;margin:0;letter-spacing:.04em;color:var(--peach);
+  text-shadow:1px 0 0 #d98ba066,-1px 0 0 #9fb7c966}
+.brand p{margin:0;color:var(--ink-dim);font-size:13px}
+.ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+button:hover{border-color:var(--ink-dim)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,label.drop:focus-within{outline:2px solid var(--mist);outline-offset:2px}
+.tabs{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px}
+.tabs button{border:0;background:transparent;border-radius:999px;padding:7px 15px;color:var(--ink-dim);font-size:14px}
+.tabs button[aria-selected="true"]{background:var(--panel-2);color:var(--peach);box-shadow:inset 0 0 0 1px var(--line)}
+.power{display:inline-flex;align-items:center;gap:10px;padding:8px 18px 8px 14px;border-radius:999px;min-height:48px;font-size:14px;background:var(--panel)}
+.power .lamp{width:16px;height:16px;border-radius:50%;background:#43394f;box-shadow:inset 0 0 0 2px #00000066;transition:background .2s,box-shadow .2s}
+.power b{font-family:var(--f-mono);font-weight:500;letter-spacing:.1em;min-width:2.4em;text-align:left;color:var(--ink-dim)}
+.power[aria-pressed="true"]{border-color:var(--peach)}
+.power[aria-pressed="true"] .lamp{background:var(--peach);box-shadow:0 0 12px 3px #f2c6a077}
+.power[aria-pressed="true"] b{color:var(--peach)}
+
+/* notices */
+.notices{display:flex;flex-direction:column;gap:8px}
+.notices:empty{display:none}
+.notice{border:1px solid var(--line);border-left:3px solid var(--mist);background:var(--panel);border-radius:10px;padding:10px 14px;font-size:13.5px;line-height:1.65}
+.notice.warn{border-left-color:var(--peach)}
+.notice.err{border-left-color:var(--rose)}
+.notice strong{display:block;color:var(--ink);font-weight:700}
+.notice p{margin:2px 0 0;color:var(--ink-dim)}
+.notice ol{margin:6px 0 0;padding-left:1.4em;color:var(--ink-dim)}
+.notice .acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.notice .acts button{font-size:13px;padding:6px 12px}
+.notice .acts button.primary{background:var(--peach);color:#2a2235;border-color:var(--peach);font-weight:700}
+
+/* connection panel */
+details.conn{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+details.conn summary{cursor:pointer;padding:10px 14px;font-size:14px;display:flex;gap:10px;align-items:baseline;list-style:none;min-width:0;border-radius:12px}
+details.conn summary::-webkit-details-marker{display:none}
+details.conn summary::before{content:"▸";color:var(--ink-dim);display:inline-block;transition:transform .15s}
+details.conn[open] summary::before{transform:rotate(90deg)}
+#connSum{font-size:12px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.conn-body{padding:0 14px 14px;display:grid;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-dim);min-width:0}
+select{font:inherit;font-size:14px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+select option:disabled{color:#776a88}
+.conn-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--ink-dim)}
+.conn-foot button{font-size:13px;padding:6px 12px}
+.diag{margin:0;font-family:var(--f-mono);font-size:11px;line-height:1.55;color:var(--ink-dim);background:#17131f;border:1px solid var(--line);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-all;user-select:text}
+
+/* deck */
+.deck{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px}
+@media (max-width:680px){.deck{grid-template-columns:minmax(0,1fr);padding:14px}}
+.tape{position:relative;background:linear-gradient(180deg,#2e2640,#241e31);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.label{background:#e9dfe6;color:#2a2235;border-radius:4px;padding:6px 10px;font-family:var(--f-display);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background-image:repeating-linear-gradient(0deg,transparent 0 17px,#c9b8c855 17px 18px)}
+.label small{font-family:var(--f-mono);font-size:11px;color:#6e5f78;margin-left:6px}
+.label .live{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;background:#c4566e;color:#fff4f6;padding:1px 6px;border-radius:3px;margin-right:8px;vertical-align:2px}
+.window{height:88px;background:#120f18;border-radius:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:relative;overflow:hidden;border:1px solid #00000066}
+.window::after{content:"";position:absolute;left:30%;right:30%;top:50%;height:22px;margin-top:-11px;background:#3b2a24;border-radius:3px;opacity:.85}
+.reel{width:60px;height:60px;border-radius:50%;position:relative;z-index:1;
+  background:radial-gradient(circle,#120f18 0 9px,#e9dfe6 9px 13px,transparent 13px),
+  conic-gradient(from 0deg,#5a4a3e 0 20deg,#2b211c 20deg 60deg,#5a4a3e 60deg 80deg,#2b211c 80deg 120deg,#5a4a3e 120deg 140deg,#2b211c 140deg 180deg,#5a4a3e 180deg 200deg,#2b211c 200deg 240deg,#5a4a3e 240deg 260deg,#2b211c 260deg 300deg,#5a4a3e 300deg 320deg,#2b211c 320deg 360deg);
+  animation:spin 2.6s linear infinite;animation-play-state:paused}
+.playing .reel{animation-play-state:running}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.reel{animation:none}}
+.transport{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn-play{background:var(--peach);color:#2a2235;border-color:var(--peach);font-weight:700;min-width:84px}
+.btn-play:hover{background:#f7d4b6}
+.btn-ab{font-size:13px;flex:1 1 auto;touch-action:none;user-select:none}
+.btn-ab.on{background:var(--mist);color:#1d2530;border-color:var(--mist)}
+.seek{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.seek input{flex:1;min-width:0}
+.live-st{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);min-height:24px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:#4a3f58;flex:none}
+.dot.on{background:var(--rose);box-shadow:0 0 8px var(--rose);animation:blink 1.8s ease-in-out infinite}
+@keyframes blink{50%{opacity:.45}}
+.ag{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-dim);cursor:pointer}
+.ag input{accent-color:var(--peach);width:15px;height:15px;margin:0}
+.ag .v{margin-left:auto;font-family:var(--f-mono);font-size:11.5px;color:var(--mist)}
+.vol{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-dim)}
+.vol label{flex:none}
+.vol input{flex:1;min-width:0}
+.vol .v{font-family:var(--f-mono);font-size:11.5px;color:var(--mist);width:5.4em;text-align:right;font-variant-numeric:tabular-nums}
+
+.scope{display:flex;flex-direction:column;gap:10px;min-width:0}
+canvas{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}
+#vu{height:124px;background:#1a1520}
+#cv{height:104px;background:#100d16}
+.readout{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.readout b{color:var(--mist);font-weight:500}
+
+/* presets */
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.preset{border-radius:999px;padding:7px 14px;font-size:14px}
+.preset .k{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-dim);margin-right:6px}
+.preset.on{background:transparent;border-color:var(--peach);color:var(--peach)}
+.sec-h{font-size:12px;letter-spacing:.14em;color:var(--ink-dim);margin:0 0 8px;font-weight:500}
+.my{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.my-h{font-size:12px;letter-spacing:.1em;color:var(--ink-dim);flex:none}
+.my-list{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.my-list .none{font-size:12px;color:var(--ink-dim)}
+.chip{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;max-width:100%}
+.chip button{border:0;border-radius:0;padding:5px 11px;font-size:13px;background:var(--panel-2)}
+.chip .ap{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:16em}
+.chip .del{color:var(--ink-dim);padding:5px 9px;border-left:1px solid var(--line)}
+.chip .del:hover{color:var(--rose)}
+.chip.on{border-color:var(--peach)}
+.chip.on .ap{color:var(--peach);background:transparent}
+.my-save{display:flex;gap:6px;flex:1 1 200px;min-width:0}
+.my-save input{font:inherit;font-size:13px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0;flex:1}
+.my-save button{font-size:13px;padding:6px 12px;flex:none}
+
+/* knobs */
+.knobs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 22px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+@media (max-width:680px){.knobs{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:14px}}
+@media (max-width:340px){.knobs{grid-template-columns:minmax(0,1fr)}}
+.knob{display:flex;flex-direction:column;gap:2px;min-width:0}
+.knob .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.knob label{font-weight:500;font-size:14px}
+.knob .val{font-family:var(--f-mono);font-size:11px;color:var(--mist);font-variant-numeric:tabular-nums;white-space:nowrap}
+.knob .hint{font-size:12px;color:var(--ink-dim)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--rose) 0 var(--p,0%),var(--line) var(--p,0%))}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--rose)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--ink);margin-top:-6px;border:3px solid var(--panel)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--ink);border:3px solid var(--panel)}
+
+/* playlist */
+.lib{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px}
+@media (max-width:680px){.lib{grid-template-columns:minmax(0,1fr)}}
+label.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed var(--line);border-radius:12px;padding:20px;text-align:center;cursor:pointer;color:var(--ink-dim);min-height:120px;transition:border-color .15s,background .15s}
+label.drop:hover,label.drop.over{border-color:var(--peach);background:#f2c6a00d;color:var(--ink)}
+label.drop strong{color:var(--peach);font-family:var(--f-display);font-size:20px;font-weight:400}
+label.drop input{position:absolute;width:1px;height:1px;opacity:0}
+ol.list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;max-height:220px;overflow:auto;background:var(--panel)}
+ol.list li{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px;min-width:0}
+ol.list li:last-child{border-bottom:0}
+ol.list li:hover{background:var(--panel-2)}
+ol.list li .n{font-family:var(--f-mono);font-size:11px;color:var(--ink-dim);width:22px;flex:none}
+ol.list li .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+ol.list li.cur{color:var(--peach)}
+ol.list li.demo .t::after{content:"サンプル";font-size:10px;margin-left:8px;padding:1px 6px;border:1px solid var(--line);border-radius:999px;color:var(--ink-dim)}
+
+body[data-mode="live"] .file-only{display:none!important}
+body[data-mode="file"] .live-only{display:none!important}
+
+footer{color:var(--ink-dim);font-size:12.5px;display:flex;flex-direction:column;gap:6px}
+footer p{margin:0;max-width:68ch}
+kbd{font-family:var(--f-mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--panel-2);color:var(--ink)}
+</style>
+</head>
+<body data-mode="live">
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>残響カセット</h1>
+      <p id="tagline">PCの音を、少しだけ遠い記憶の音にする</p>
+    </div>
+    <div class="ctrl">
+      <div class="tabs" role="tablist" aria-label="入力の切り替え">
+        <button role="tab" id="tabLive" aria-selected="true">PCの音</button>
+        <button role="tab" id="tabFile" aria-selected="false">ファイル</button>
+      </div>
+      <button class="power" id="powerBtn" aria-pressed="true" title="エフェクトのON/OFF（Space）"><span class="lamp" aria-hidden="true"></span><span>エフェクト</span><b id="powerTxt">ON</b></button>
+    </div>
+  </header>
+
+  <div class="notices" id="notices" aria-live="polite"></div>
+
+  <details class="conn" id="conn">
+    <summary>接続設定 <span id="connSum"></span></summary>
+    <div class="conn-body">
+      <label class="field live-only">入力（PCの音を受け取るデバイス）
+        <select id="inSel"></select>
+      </label>
+      <label class="field" id="outRow">出力（実際に聞くヘッドホン・スピーカー）
+        <select id="outSel"></select>
+      </label>
+      <div class="conn-foot">
+        <button id="rescanBtn">デバイスを再検索</button>
+        <span>「CABLE」と付く出力は、音がループしてハウリングするため選べません。</span>
+      </div>
+      <pre class="diag live-only" id="diag" aria-label="診断情報"></pre>
+    </div>
+  </details>
+
+  <section class="deck" id="deck">
+    <div class="tape">
+      <div class="label" id="nowLabel">&nbsp;</div>
+      <div class="window"><div class="reel"></div><div class="reel"></div></div>
+      <div class="live-st live-only"><span class="dot" id="liveDot"></span><span id="liveTxt">準備中…</span></div>
+      <div class="seek file-only"><span id="tCur">0:00</span><input type="range" id="seekBar" min="0" max="1000" value="0" aria-label="再生位置"><span id="tDur">∞</span></div>
+      <div class="transport">
+        <button class="file-only" id="prevBtn" aria-label="前の曲">⏮</button>
+        <button class="btn-play file-only" id="playBtn">▶ 再生</button>
+        <button class="file-only" id="nextBtn" aria-label="次の曲">⏭</button>
+        <button class="btn-ab" id="abBtn" title="押している間だけ加工前の音になります（Bキーでも同じ）">押して原音と比較 <kbd>B</kbd></button>
+      </div>
+      <label class="ag"><input type="checkbox" id="agIn"> 音量を原音にそろえる <span class="v" id="agV"></span></label>
+      <div class="vol"><label for="volIn">出力音量</label><input type="range" id="volIn" min="0" max="100" value="80"><span class="v" id="volV"></span></div>
+    </div>
+    <div class="scope">
+      <canvas id="vu" aria-label="入力レベルメーター"></canvas>
+      <canvas id="cv" aria-label="出力の波形"></canvas>
+      <div class="readout" id="readout"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec-h">プリセット</h2>
+    <div class="presets" id="presets"></div>
+    <div class="my">
+      <span class="my-h">マイプリセット</span>
+      <div class="my-list" id="myList"></div>
+      <form class="my-save" id="mySave">
+        <input type="text" id="myName" maxlength="24" placeholder="名前をつけて保存" aria-label="マイプリセットの名前">
+        <button type="submit">保存</button>
+      </form>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec-h">劣化のつまみ</h2>
+    <div class="knobs" id="knobs"></div>
+  </section>
+
+  <section class="lib file-only">
+    <label class="drop" id="drop">
+      <strong>曲をここに落とす</strong>
+      <span>mp3 / m4a / wav / flac など（複数可）</span>
+      <span style="font-size:12px">クリックしてファイルを選ぶこともできます</span>
+      <input type="file" id="fileIn" accept="audio/*" multiple>
+    </label>
+    <ol class="list" id="list"></ol>
+  </section>
+
+  <footer>
+    <p class="live-only">このウィンドウを閉じると、PCの音は聞こえなくなります。ふつうの音に戻すときは、Windowsの「サウンド → 出力」をいつものスピーカーやヘッドホンに戻してください。</p>
+    <p class="file-only">ファイルはこのブラウザの中だけで再生され、どこにも送信されません。ファイル再生中は、PCのほかの音は聞こえません。</p>
+    <p>最初は音量を小さめにしてから再生してください。プリセットやつまみによっては急に大きな音が出ることがあります。</p>
+    <p><kbd>Space</kbd> エフェクトON/OFF　<kbd>B</kbd> 押している間だけ原音　<kbd>1</kbd>〜<kbd>8</kbd> プリセット</p>
+    <p>© 2026 もちもち · MIT License · VB-CABLE は VB-Audio Software の製品です</p>
+  </footer>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- knobs & presets ---------- */
+const KNOBS=[
+ {id:'tone',name:'こもり',hint:'高音を削る',fmt:v=>`LPF ${Math.round(lp(v))} Hz`},
+ {id:'thin',name:'細さ',hint:'低音を削る',fmt:v=>`HPF ${Math.round(hp(v))} Hz`},
+ {id:'wow',name:'ゆらぎ',hint:'テープの回転ムラ',fmt:v=>`±${(v*0.6).toFixed(2)}%`},
+ {id:'hiss',name:'ヒスノイズ',hint:'サーッという音',fmt:v=>`${v?(-60+v*36).toFixed(0):'-∞'} dB`},
+ {id:'crackle',name:'パチパチ',hint:'レコードの埃',fmt:v=>`${Math.round(v*14)} 回/秒`},
+ {id:'sat',name:'歪み',hint:'あたたかい飽和',fmt:v=>`drive ×${(1+v*9).toFixed(1)}`},
+ {id:'crush',name:'デジタル劣化',hint:'ビット数と解像度',fmt:v=>v<.01?'16 bit':`${bits(v)} bit / ${Math.round(48000/hold(v)/1000)} kHz`},
+ {id:'rev',name:'遠さ',hint:'となりの部屋の残響',fmt:v=>`wet ${Math.round(v*100)}%`},
+ {id:'mono',name:'モノラル',hint:'左右の広がりを狭める',fmt:v=>`width ${Math.round((1-v)*100)}%`},
+];
+const lp=v=>20000*Math.pow(650/20000,v);
+const hp=v=>20*Math.pow(900/20,v);
+const bits=v=>Math.round(16-v*12);
+const hold=v=>1+Math.floor(v*14);
+const PRESETS={
+ 'カセット':{tone:.45,thin:.15,wow:.45,hiss:.4,crackle:0,sat:.45,crush:.05,rev:.15,mono:.3},
+ '深夜のAMラジオ':{tone:.78,thin:.72,wow:.06,hiss:.55,crackle:.08,sat:.6,crush:.35,rev:0,mono:1},
+ '古いレコード':{tone:.35,thin:.12,wow:.15,hiss:.15,crackle:.6,sat:.3,crush:0,rev:.1,mono:.25},
+ 'となりの部屋':{tone:.9,thin:.3,wow:0,hiss:.05,crackle:0,sat:.1,crush:0,rev:.6,mono:.6},
+ '夢の中':{tone:.6,thin:.2,wow:.7,hiss:.2,crackle:.1,sat:.2,crush:.15,rev:.8,mono:.1},
+ 'ガラケーの着うた':{tone:.55,thin:.55,wow:0,hiss:.05,crackle:0,sat:.35,crush:.7,rev:0,mono:1},
+ '8bit':{tone:.3,thin:.35,wow:0,hiss:0,crackle:0,sat:.55,crush:.67,rev:0,mono:1},
+ '原音':{tone:0,thin:0,wow:0,hiss:0,crackle:0,sat:0,crush:0,rev:0,mono:0},
+};
+const PNAMES=Object.keys(PRESETS);
+const cleanState=s=>{const o={};KNOBS.forEach(k=>{const v=Number(s&&s[k.id]);o[k.id]=isFinite(v)?Math.min(1,Math.max(0,v)):0;});return o;};
+
+/* ---------- saved settings ---------- */
+const LS='zankyo-cassette:v1';
+const saved=(()=>{try{return JSON.parse(localStorage.getItem(LS))||{};}catch(e){return {};}})();
+let state=saved.state?cleanState(saved.state):{...PRESETS['カセット']};
+let curPreset=typeof saved.curPreset==='string'||saved.curPreset===null?saved.curPreset:'カセット';
+if(saved.curPreset===undefined)curPreset='カセット';
+let myPresets=Array.isArray(saved.my)?saved.my.filter(p=>p&&typeof p.name==='string'&&p.s).map(p=>({name:p.name.slice(0,24),s:cleanState(p.s)})).slice(0,40):[];
+let vol=isFinite(saved.vol)?Math.min(1,Math.max(0,saved.vol)):.8;
+let power=saved.power!==false;
+let autoGain=saved.autoGain!==false;
+let mode=saved.mode==='file'?'file':'live';
+const prefs={inId:saved.inId||null,inLabel:saved.inLabel||'',outId:saved.outId||null,outLabel:saved.outLabel||''};
+let saveT=0;
+function persist(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(LS,JSON.stringify({
+  mode,state,curPreset,vol,power,autoGain,my:myPresets,inId:prefs.inId,inLabel:prefs.inLabel,outId:prefs.outId,outLabel:prefs.outLabel}));}catch(e){}},200);}
+
+/* ---------- notices ---------- */
+const notes=new Map();
+function notice(key,level,title,body='',acts=[]){notes.set(key,{level,title,body,acts});renderNotes();}
+function clearNotice(...keys){let ch=false;keys.forEach(k=>{if(notes.delete(k))ch=true;});if(ch)renderNotes();}
+function renderNotes(){const box=$('#notices');box.innerHTML='';
+  notes.forEach(n=>{const d=document.createElement('div');d.className='notice '+n.level;d.setAttribute('role',n.level==='err'?'alert':'status');
+    d.innerHTML=`<strong>${n.title}</strong>${n.body}`;
+    if(n.acts.length){const a=document.createElement('div');a.className='acts';n.acts.forEach(x=>{const b=document.createElement('button');b.textContent=x.label;if(x.primary)b.className='primary';b.onclick=x.fn;a.appendChild(b);});d.appendChild(a);}
+    box.appendChild(d);});}
+
+/* ---------- UI build ---------- */
+const knobsEl=$('#knobs');
+KNOBS.forEach(k=>{
+  const d=document.createElement('div');d.className='knob';
+  d.innerHTML=`<div class="top"><label for="k-${k.id}">${k.name}</label><span class="val" id="v-${k.id}"></span></div>
+  <input type="range" id="k-${k.id}" min="0" max="100" value="0"><span class="hint">${k.hint}</span>`;
+  knobsEl.appendChild(d);
+  d.querySelector('input').addEventListener('input',e=>{state[k.id]=e.target.value/100;curPreset=null;syncUI();apply();persist();});
+});
+const presetsEl=$('#presets');
+PNAMES.forEach((n,i)=>{
+  const b=document.createElement('button');b.className='preset';b.dataset.p=n;b.title=`キー ${i+1}`;
+  b.innerHTML=`<span class="k">${i+1}</span>`;b.append(n);
+  b.onclick=()=>applyPreset(n);
+  presetsEl.appendChild(b);
+});
+function applyPreset(n){state={...PRESETS[n]};curPreset=n;syncUI();apply(true);persist();}
+function renderMy(){const box=$('#myList');box.innerHTML='';
+  if(!myPresets.length){box.innerHTML='<span class="none">まだありません</span>';return;}
+  myPresets.forEach((p,i)=>{const c=document.createElement('span');c.className='chip'+(curPreset==='my:'+p.name?' on':'');
+    const a=document.createElement('button');a.className='ap';a.textContent=p.name;a.title='呼び出す';
+    a.onclick=()=>{state=cleanState(p.s);curPreset='my:'+p.name;syncUI();apply(true);persist();};
+    const x=document.createElement('button');x.className='del';x.textContent='×';x.setAttribute('aria-label',`${p.name} を削除`);x.title='削除';
+    x.onclick=()=>{myPresets.splice(i,1);if(curPreset==='my:'+p.name)curPreset=null;syncUI();persist();};
+    c.append(a,x);box.appendChild(c);});}
+$('#mySave').addEventListener('submit',e=>{e.preventDefault();const inp=$('#myName');
+  let name=inp.value.trim().slice(0,24);if(!name){let n=myPresets.length+1;while(myPresets.some(p=>p.name==='マイ '+n))n++;name='マイ '+n;}
+  const i=myPresets.findIndex(p=>p.name===name);const p={name,s:{...state}};
+  if(i>=0)myPresets[i]=p;else myPresets.push(p);
+  curPreset='my:'+name;inp.value='';inp.blur();syncUI();persist();});
+function syncUI(){
+  KNOBS.forEach(k=>{const i=$('#k-'+k.id);i.value=Math.round(state[k.id]*100);i.style.setProperty('--p',i.value+'%');$('#v-'+k.id).textContent=k.fmt(state[k.id]);});
+  presetsEl.querySelectorAll('.preset').forEach(b=>b.classList.toggle('on',b.dataset.p===curPreset));
+  renderMy();
+  const pn=curPreset?(curPreset.startsWith('my:')?curPreset.slice(3):curPreset):null;
+  $('#readout').innerHTML=`<span>LPF <b>${Math.round(lp(state.tone))}Hz</b></span><span>HPF <b>${Math.round(hp(state.thin))}Hz</b></span><span>wow <b>${(state.wow*.6).toFixed(2)}%</b></span><span>bit <b>${state.crush<.01?16:bits(state.crush)}</b></span><span>${pn?'preset <b>'+esc(pn)+'</b>':'<b>カスタム</b>'}</span>`;
+}
+syncUI();
+
+/* ---------- audio graph ---------- */
+const WORKLET=`
+class Crusher extends AudioWorkletProcessor{
+  static get parameterDescriptors(){return[
+    {name:'bits',defaultValue:16,minValue:1,maxValue:16,automationRate:'k-rate'},
+    {name:'hold',defaultValue:1,minValue:1,maxValue:64,automationRate:'k-rate'}];}
+  constructor(){super();this.h0=0;this.h1=0;this.c=0;}
+  process(ins,outs,p){
+    const inp=ins[0],out=outs[0],oL=out[0],oR=out[1]||out[0];
+    const L=inp&&inp[0];
+    if(!L){oL.fill(0);if(oR!==oL)oR.fill(0);return true;}
+    const R=inp[1]||L,b=Math.round(p.bits[0]),h=Math.max(1,Math.round(p.hold[0]));
+    if(b>=16&&h<=1){oL.set(L);if(oR!==oL)oR.set(R);this.c=0;return true;}
+    const q=Math.pow(2,b-1);let c=this.c%h,h0=this.h0,h1=this.h1;
+    for(let i=0;i<oL.length;i++){
+      if(c===0){h0=Math.round(L[i]*q)/q;h1=Math.round(R[i]*q)/q;}
+      if(++c>=h)c=0;
+      oL[i]=h0;oR[i]=h1;
+    }
+    this.c=c;this.h0=h0;this.h1=h1;return true;
+  }
+}
+registerProcessor('crusher',Crusher);`;
+
+let ctx=null,N={},initP=null;
+const AC=window.AudioContext||window.webkitAudioContext;
+const sinkOK=!!(AC&&'setSinkId' in AC.prototype);
+const audio=new Audio();audio.crossOrigin='anonymous';
+let mediaSrc=null;
+
+function shaperCurve(){const n=8192,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;c[i]=Math.tanh(10*x);}return c;}
+function noiseBuf(sec){const b=ctx.createBuffer(2,ctx.sampleRate*sec,ctx.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);let b0=0,b1=0,b2=0;for(let i=0;i<d.length;i++){const w=Math.random()*2-1;b0=.99765*b0+w*.099;b1=.963*b1+w*.2965;b2=.57*b2+w*1.0526;d[i]=(b0+b1+b2+w*.1848)*.25;}}return b;}
+function crackleBuf(sec){const b=ctx.createBuffer(2,ctx.sampleRate*sec,ctx.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);const cnt=sec*14;for(let j=0;j<cnt;j++){const p=Math.floor(Math.random()*d.length);const a=(Math.random()**3)*(Math.random()<.5?-1:1);const len=8+Math.floor(Math.random()*40);for(let i=0;i<len&&p+i<d.length;i++)d[p+i]+=a*Math.exp(-i/6)*(Math.random()*.6+.4);}}return b;}
+function irBuf(sec){const b=ctx.createBuffer(2,ctx.sampleRate*sec,ctx.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<d.length;i++){const t=i/d.length;d[i]=(Math.random()*2-1)*Math.pow(1-t,3.2)*(i<ctx.sampleRate*.012?0:1);}}return b;}
+
+function init(){
+  if(initP)return initP;
+  initP=(async()=>{
+  try{ctx=new AC({latencyHint:'interactive',sampleRate:48000});}catch(e){ctx=new AC({latencyHint:'interactive'});}
+  const G=v=>{const g=ctx.createGain();g.gain.value=v;return g;};
+  // 1. inputs
+  N.inLive=G(mode==='live'?1:0);N.inFile=G(mode==='file'?1:0);N.input=G(1);
+  N.inLive.connect(N.input);N.inFile.connect(N.input);
+  N.inAn=ctx.createAnalyser();N.inAn.fftSize=2048;N.input.connect(N.inAn);
+  // 2-4. filters
+  N.hp=ctx.createBiquadFilter();N.hp.type='highpass';N.hp.Q.value=.6;
+  N.lp=ctx.createBiquadFilter();N.lp.type='lowpass';N.lp.Q.value=.9;
+  N.mid=ctx.createBiquadFilter();N.mid.type='peaking';N.mid.frequency.value=1200;N.mid.Q.value=.7;
+  // 5. tanh saturation: drive gain → fixed tanh(10x) curve → normalize. = tanh(kx)/tanh(k), all params smoothable
+  N.drive=G(.1);N.sat=ctx.createWaveShaper();N.sat.curve=shaperCurve();N.sat.oversample='2x';N.satOut=G(1);
+  // 6. bit crusher (AudioWorklet from Blob URL)
+  try{
+    const url=URL.createObjectURL(new Blob([WORKLET],{type:'text/javascript'}));
+    await ctx.audioWorklet.addModule(url);URL.revokeObjectURL(url);
+    N.crush=new AudioWorkletNode(ctx,'crusher',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
+  }catch(e){
+    N.crush=G(1);
+    notice('worklet','warn','「デジタル劣化」が使えません','<p>この開き方ではAudioWorkletを読み込めませんでした。https のページから開くと使えます。ほかのつまみは動きます。</p>');
+  }
+  // 7. wow & flutter
+  N.delay=ctx.createDelay(.05);N.delay.delayTime.value=.008;
+  N.wowL=ctx.createOscillator();N.wowL.frequency.value=.55;N.wowG=G(0);
+  N.flL=ctx.createOscillator();N.flL.frequency.value=6.5;N.flG=G(0);
+  N.wowL.connect(N.wowG).connect(N.delay.delayTime);N.flL.connect(N.flG).connect(N.delay.delayTime);
+  N.wowL.start();N.flL.start();
+  // 8. noise bus
+  N.bus=G(1);
+  N.hiss=ctx.createBufferSource();N.hiss.buffer=noiseBuf(4);N.hiss.loop=true;
+  N.hissF=ctx.createBiquadFilter();N.hissF.type='bandpass';N.hissF.frequency.value=5000;N.hissF.Q.value=.4;
+  N.hissG=G(0);N.hiss.connect(N.hissF).connect(N.hissG).connect(N.bus);N.hiss.start();
+  N.crk=ctx.createBufferSource();N.crk.buffer=crackleBuf(7);N.crk.loop=true;
+  N.crkF=ctx.createBiquadFilter();N.crkF.type='highpass';N.crkF.frequency.value=900;
+  N.crkG=G(0);N.crk.connect(N.crkF).connect(N.crkG).connect(N.bus);N.crk.start();
+  // 9. stereo width
+  N.stereo=G(1);
+  N.monoG=G(0);N.monoG.channelCount=1;N.monoG.channelCountMode='explicit';N.monoG.channelInterpretation='speakers';
+  N.width=G(1);
+  // 10. reverb
+  N.conv=ctx.createConvolver();N.conv.buffer=irBuf(2.8);
+  N.revPre=ctx.createBiquadFilter();N.revPre.type='lowpass';N.revPre.frequency.value=3500;
+  N.wet=G(0);N.dry=G(1);N.fxSum=G(1);
+  N.comp=G(1); // 音量補正（原音と同じ大きさにそろえる）
+  N.fxAn=ctx.createAnalyser();N.fxAn.fftSize=2048;
+  N.lim=ctx.createDynamicsCompressor();N.lim.threshold.value=-1;N.lim.knee.value=0;N.lim.ratio.value=20;N.lim.attack.value=.002;N.lim.release.value=.12;
+  // 11. crossfade fx / raw
+  N.fx=G(power?1:0);N.raw=G(power?0:1);
+  // 12. master → analyser → gate → out
+  N.master=G(vol*vol);
+  N.an=ctx.createAnalyser();N.an.fftSize=2048;
+  N.gate=G(0);
+
+  N.input.connect(N.hp);N.hp.connect(N.lp);N.lp.connect(N.mid);N.mid.connect(N.drive);N.drive.connect(N.sat);N.sat.connect(N.satOut);
+  N.satOut.connect(N.crush);N.crush.connect(N.delay);N.delay.connect(N.bus);
+  N.bus.connect(N.stereo);N.bus.connect(N.monoG);N.stereo.connect(N.width);N.monoG.connect(N.width);
+  N.width.connect(N.dry);N.width.connect(N.revPre);N.revPre.connect(N.conv);N.conv.connect(N.wet);
+  N.dry.connect(N.fxSum);N.wet.connect(N.fxSum);N.fxSum.connect(N.comp);N.comp.connect(N.lim);N.lim.connect(N.fx);N.lim.connect(N.fxAn);
+  N.input.connect(N.raw);
+  N.fx.connect(N.master);N.raw.connect(N.master);
+  N.master.connect(N.an);N.master.connect(N.gate);N.gate.connect(ctx.destination);
+
+  mediaSrc=ctx.createMediaElementSource(audio);mediaSrc.connect(N.inFile);
+  N.demo=G(0);N.demo.connect(N.inFile);
+  ctx.onstatechange=()=>{updateRun();if(ctx.state==='running')clearNotice('start');};
+  apply(true);updateBypass();
+  tryResume();
+  })();
+  return initP;
+}
+function tryResume(){if(!ctx||ctx.state==='running')return;ctx.resume().catch(()=>{});
+  setTimeout(()=>{if(ctx.state!=='running')notice('start','info','クリックして音を通しはじめる','<p>ブラウザの決まりで、最初に一度だけ操作が必要です。</p>',[{label:'▶ はじめる',primary:true,fn:()=>ctx.resume()}]);},400);}
+['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{if(ctx&&ctx.state!=='running')ctx.resume().catch(()=>{});},true));
+
+function apply(smooth){
+  if(!N.gate)return;const t=ctx.currentTime,T=smooth?.12:.03,s=state;
+  const set=(p,v)=>p.setTargetAtTime(v,t,T);
+  set(N.lp.frequency,lp(s.tone));set(N.hp.frequency,hp(s.thin));
+  set(N.mid.gain,s.thin*4+s.tone*2);
+  const k=1+s.sat*9;set(N.drive.gain,k/10);set(N.satOut.gain,(1-s.sat*.35)/Math.tanh(k));
+  if(N.crush.parameters){N.crush.parameters.get('bits').setValueAtTime(s.crush<.01?16:bits(s.crush),t);N.crush.parameters.get('hold').setValueAtTime(s.crush<.01?1:hold(s.crush),t);}
+  set(N.wowG.gain,.0042*s.wow);set(N.flG.gain,.00035*s.wow);
+  set(N.hissG.gain,s.hiss?Math.pow(10,(-60+s.hiss*36)/20)*3:0);
+  set(N.crkG.gain,s.crackle*.55);
+  set(N.stereo.gain,1-s.mono);set(N.monoG.gain,s.mono);
+  set(N.wet.gain,s.rev*1.1);set(N.dry.gain,1-s.rev*.55);
+}
+
+/* ---------- power / A-B ---------- */
+let abHeld=false;
+function updateBypass(){if(!N.fx)return;const byp=!power||abHeld,t=ctx.currentTime;
+  N.fx.gain.setTargetAtTime(byp?0:1,t,.02);N.raw.gain.setTargetAtTime(byp?1:0,t,.02);}
+function setPower(p){power=p;const b=$('#powerBtn');b.setAttribute('aria-pressed',String(p));$('#powerTxt').textContent=p?'ON':'OFF';updateBypass();persist();}
+$('#powerBtn').onclick=()=>setPower(!power);
+setPower(power);
+const ab=$('#abBtn');
+const abOn=()=>{if(abHeld)return;abHeld=true;ab.classList.add('on');updateBypass();};
+const abOff=()=>{if(!abHeld)return;abHeld=false;ab.classList.remove('on');updateBypass();};
+ab.addEventListener('pointerdown',e=>{ab.setPointerCapture?.(e.pointerId);abOn();});
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>ab.addEventListener(ev,abOff));
+ab.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.repeat){e.preventDefault();abOn();}});
+ab.addEventListener('keyup',e=>{if(e.key==='Enter')abOff();});
+addEventListener('blur',abOff);
+
+/* ---------- master volume ---------- */
+const volIn=$('#volIn');
+function syncVol(){volIn.value=Math.round(vol*100);volIn.style.setProperty('--p',volIn.value+'%');
+  $('#volV').textContent=vol<=0?'-∞ dB':`${(40*Math.log10(vol)).toFixed(1)} dB`;}
+volIn.addEventListener('input',()=>{vol=Math.min(1,Math.max(0,volIn.value/100));syncVol();if(N.master)N.master.gain.setTargetAtTime(vol*vol,ctx.currentTime,.03);persist();});
+syncVol();
+const agIn=$('#agIn');agIn.checked=autoGain;agIn.addEventListener('change',()=>{autoGain=agIn.checked;persist();});
+
+/* ---------- devices ---------- */
+let devices={in:[],out:[],labels:false};
+let stream=null,liveSrc=null,currentOut=null,liveBusy=false;
+const isCable=d=>/cable/i.test(d.label||'');
+const realDev=d=>d.deviceId&&d.deviceId!=='default'&&d.deviceId!=='communications';
+async function refreshDevices(){
+  if(!navigator.mediaDevices?.enumerateDevices)return devices;
+  const list=await navigator.mediaDevices.enumerateDevices();
+  devices={in:list.filter(d=>d.kind==='audioinput'),out:list.filter(d=>d.kind==='audiooutput'),labels:list.some(d=>d.label)};
+  renderSelects();return devices;
+}
+const safeOut=id=>{const d=devices.out.find(x=>x.deviceId===id);return !!d&&devices.labels&&realDev(d)&&!isCable(d);};
+const outLabel=id=>(devices.out.find(x=>x.deviceId===id)||{}).label||'';
+function pickPreferredOut(){
+  let d=devices.out.find(x=>x.deviceId===prefs.outId);if(d&&safeOut(d.deviceId))return d.deviceId;
+  if(prefs.outLabel){d=devices.out.find(x=>realDev(x)&&x.label===prefs.outLabel);if(d&&safeOut(d.deviceId))return d.deviceId;}
+  return null;
+}
+function pickAnyOut(){
+  const ok=devices.out.filter(x=>safeOut(x.deviceId));if(!ok.length)return null;
+  const score=d=>/ヘッドホン|ヘッドフォン|ヘッドセット|headphone|headset|earphone|airpods|buds/i.test(d.label)?3:/スピーカー|speaker|realtek/i.test(d.label)?2:1;
+  // Windows の既定が安全なら、その実体を優先（CABLE が既定なら除外済み）
+  const def=devices.out.find(x=>x.deviceId==='default');
+  if(def&&!isCable(def)){const m=ok.find(x=>def.label.includes(x.label));if(m)return m.deviceId;}
+  return ok.slice().sort((a,b)=>score(b)-score(a))[0].deviceId;
+}
+function setGate(open,instant){if(!N.gate)return;const g=N.gate.gain,t=ctx.currentTime;
+  if(instant){g.cancelScheduledValues(t);g.setValueAtTime(open?1:0,t);}else g.setTargetAtTime(open?1:0,t,.03);}
+function evaluateGate(){
+  if(!N.gate)return;
+  let open;
+  if(mode==='file')open=true;
+  else open=sinkOK&&currentOut!=null&&safeOut(currentOut);
+  setGate(open,!open);
+  if(mode==='live'&&sinkOK&&!open&&devices.labels&&!liveBusy){
+    notice('outpick','warn','出力先（ヘッドホンやスピーカー）を選んでください','<p>選ぶまでは、ハウリング防止のため音を止めています。</p>',[{label:'接続設定を開く',fn:()=>{$('#conn').open=true;$('#outSel').focus();}}]);
+  }else clearNotice('outpick');
+  updateConnSum();
+}
+async function applyOutput(id,{user=false,fallback=false}={}){
+  if(!ctx||!sinkOK||!id||!safeOut(id)){evaluateGate();return false;}
+  if(id===currentOut){evaluateGate();return true;}
+  setGate(false,true);
+  try{await ctx.setSinkId(id);currentOut=id;
+    if(user||(!fallback&&!prefs.outId)){prefs.outId=id;prefs.outLabel=outLabel(id);persist();}
+    clearNotice('outerr');
+  }catch(e){currentOut=null;notice('outerr','err','出力先を切り替えられませんでした',`<p>${esc(e.message||e.name)}</p>`);}
+  renderSelects();evaluateGate();return currentOut===id;
+}
+async function chooseOutput(){
+  if(!sinkOK){
+    $('#outRow').hidden=true;
+    notice('nosink','err','Chromeで開いてください','<p>このブラウザは出力先の切り替え（setSinkId）に対応していません。ハウリング防止のため「PCの音」モードでは音を出しません。</p>');
+    evaluateGate();return;
+  }
+  if(!devices.labels){evaluateGate();return;}
+  const id=pickPreferredOut()||pickAnyOut();
+  if(id)await applyOutput(id);
+  else{evaluateGate();if(!devices.out.some(x=>safeOut(x.deviceId)))notice('outnone','err','使える出力先が見つかりません','<p>ヘッドホンかスピーカーをつないで「デバイスを再検索」を押してください。CABLE系には出力できません。</p>');}
+  if(devices.out.some(x=>safeOut(x.deviceId)))clearNotice('outnone');
+}
+
+function permHelp(){
+  notice('perm','err','マイク（音の入力）が許可されていません',
+   `<p>PCの音は、Chromeからは「マイク」として受け取ります。許可しないと加工できません。</p>
+    <ol><li>アドレスバー左の鍵（または調整）アイコンをクリック</li><li>「マイク」を「許可」にする</li><li>このページを再読み込み</li></ol>
+    <p>アプリとしてインストールした窓などでアドレスバーが見えないときは、ウィンドウ右上の「︙」→「アプリ情報」からマイクを許可できます。</p>`,
+   [{label:'もう一度たずねる',primary:true,fn:()=>{clearNotice('perm');startLive();}},{label:'再読み込み',fn:()=>location.reload()}]);
+}
+function gumError(e){
+  const n=e&&e.name;
+  if(n==='NotAllowedError'||n==='SecurityError'||n==='PermissionDeniedError'){permHelp();return 'perm';}
+  if(n==='NotFoundError'||n==='OverconstrainedError'){return 'notfound';}
+  if(n==='NotReadableError'||n==='AbortError'){notice('inerr','err','入力デバイスを開けませんでした','<p>デバイスが応答していないか、ほかのアプリが独占しています。PCを再起動すると直ることがあります。</p>',[{label:'もう一度',primary:true,fn:()=>{clearNotice('inerr');startLive();}}]);return 'busy';}
+  notice('inerr','err','入力を開始できませんでした',`<p>${esc((e&&(e.message||e.name))||'不明なエラー')}</p>`);return 'other';
+}
+function pickInput(){
+  const ins=devices.in.filter(realDev);
+  let d=ins.find(x=>x.deviceId===prefs.inId);if(d)return d.deviceId;
+  if(prefs.inLabel){d=ins.find(x=>x.label===prefs.inLabel);if(d)return d.deviceId;}
+  d=ins.find(x=>/CABLE Output/i.test(x.label));return d?d.deviceId:null;
+}
+function cableMissing(){
+  notice('nocable','err','「CABLE Output」が見つかりません',
+   `<p>VB-CABLE が入っていないか、インストール後に再起動していない可能性があります。</p>
+    <ol><li>VB-AUDIO公式サイトから VB-CABLE Driver を入れる（管理者として実行）</li><li>PCを再起動する</li><li>「デバイスを再検索」を押す</li></ol>
+    <p>別の入力を使う場合は「接続設定」から選べます。</p>`,
+   [{label:'デバイスを再検索',primary:true,fn:()=>startLive()},{label:'接続設定を開く',fn:()=>{$('#conn').open=true;}}]);
+}
+function stopStream(){
+  if(liveSrc){try{liveSrc.disconnect();}catch(e){}liveSrc=null;}
+  if(stream){stream.getTracks().forEach(t=>{t.onended=null;t.stop();});stream=null;}
+}
+async function openInput(id){
+  stopStream();
+  let s;
+  try{
+    s=await navigator.mediaDevices.getUserMedia({audio:{deviceId:{exact:id},echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:2,sampleRate:48000}});
+  }catch(e){const r=gumError(e);if(r==='notfound'){if(prefs.inId===id){prefs.inId=null;}return false;}return false;}
+  stream=s;liveSrc=ctx.createMediaStreamSource(s);liveSrc.connect(N.inLive);
+  const tr=s.getAudioTracks()[0];
+  tr.onended=()=>{stopStream();updateRun();notice('inlost','warn','入力が途切れました','<p>入力デバイスが見えなくなりました。戻ってきたら自動で再接続します。</p>',[{label:'再接続',primary:true,fn:()=>startLive()}]);};
+  prefs.inId=id;prefs.inLabel=tr.label||prefs.inLabel;persist();
+  clearNotice('perm','nocable','inerr','inlost');silentSince=null;
+  renderSelects();updateLabel();updateRun();
+  return true;
+}
+async function startLive(){
+  if(liveBusy)return;liveBusy=true;
+  try{
+    if(!navigator.mediaDevices?.getUserMedia){
+      notice('nogum','err','この開き方では音の入力が使えません','<p>Chrome で https のページから開いてください（ファイルを直接開いた場合は使えないことがあります）。</p>');return;}
+    await init();
+    await refreshDevices();
+    if(!devices.labels){
+      // まだ許可がない：一度だけ既定の入力で許可をもらってラベルを取る
+      try{const t=await navigator.mediaDevices.getUserMedia({audio:true});t.getTracks().forEach(x=>x.stop());}
+      catch(e){gumError(e);return;}
+      await refreshDevices();
+    }
+    clearNotice('perm');
+    await chooseOutput();
+    if(mode!=='live')return;
+    let id=pickInput();
+    if(!id){cableMissing();return;}
+    if(!(await openInput(id))){
+      // 保存していたIDが無効になった場合はラベル・CABLE Output で選び直す
+      id=pickInput();
+      if(id&&!stream)await openInput(id);
+      if(!stream&&!notes.has('perm')&&!notes.has('inerr'))cableMissing();
+    }
+  }finally{liveBusy=false;evaluateGate();updateRun();}
+}
+function renderSelects(){
+  const inSel=$('#inSel'),outSel=$('#outSel');
+  inSel.innerHTML='';outSel.innerHTML='';
+  const opt=(sel,v,t,dis,selc)=>{const o=document.createElement('option');o.value=v;o.textContent=t;o.disabled=!!dis;if(selc)o.selected=true;sel.appendChild(o);};
+  if(!devices.labels){opt(inSel,'','（マイクの許可が必要です）',true,true);opt(outSel,'','（マイクの許可が必要です）',true,true);updateConnSum();return;}
+  const curIn=stream?prefs.inId:null;
+  const ins=devices.in.filter(realDev);
+  if(!curIn)opt(inSel,'','選んでください',true,true);
+  ins.forEach(d=>opt(inSel,d.deviceId,d.label||'名前のないデバイス',false,d.deviceId===curIn));
+  const outs=devices.out.filter(realDev);
+  if(currentOut==null)opt(outSel,'','選んでください',true,true);
+  outs.forEach(d=>opt(outSel,d.deviceId,isCable(d)?`${d.label}（ループするため選べません）`:d.label,isCable(d),d.deviceId===currentOut));
+  updateConnSum();
+}
+$('#inSel').addEventListener('change',async e=>{const id=e.target.value;if(!id||!ctx)return;
+  const d=devices.in.find(x=>x.deviceId===id);
+  if(await openInput(id)){prefs.inId=id;prefs.inLabel=d?d.label:'';persist();}else renderSelects();});
+$('#outSel').addEventListener('change',e=>{const id=e.target.value;if(id)applyOutput(id,{user:true});});
+$('#rescanBtn').onclick=async()=>{if(mode==='live'&&!stream)await startLive();else{await refreshDevices();await onDevicesChanged();}};
+function updateConnSum(){
+  const inL=stream?(stream.getAudioTracks()[0]?.label||'?'):'未接続';
+  const outL=!sinkOK?'既定（変更不可）':currentOut?outLabel(currentOut):'未選択';
+  $('#connSum').textContent=(mode==='live'?`入力: ${inL}　/　`:'')+`出力: ${outL}`;
+}
+
+async function onDevicesChanged(){
+  if(!ctx)return;
+  await refreshDevices();
+  if(sinkOK&&devices.labels){
+    const pref=pickPreferredOut();
+    if(currentOut&&!safeOut(currentOut)){
+      // 出力が消えた／CABLEになった：すぐ止めてから切り替える
+      const old=prefs.outLabel&&currentOut===prefs.outId?prefs.outLabel:outLabel(currentOut)||'前の出力';
+      setGate(false,true);currentOut=null;
+      const fb=pref||pickAnyOut();
+      if(fb&&await applyOutput(fb,{fallback:true}))notice('outfb','warn','出力先を切り替えました',`<p>「${esc(old)}」が見つからないため、「${esc(outLabel(fb))}」から出しています。元のデバイスをつなぎ直すと自動で戻ります。</p>`,[{label:'閉じる',fn:()=>clearNotice('outfb')}]);
+      else chooseOutput();
+    }else if(pref&&pref!==currentOut){
+      if(await applyOutput(pref))notice('outfb','info','出力先を元に戻しました',`<p>「${esc(outLabel(pref))}」から出しています。</p>`,[{label:'閉じる',fn:()=>clearNotice('outfb')}]);
+    }else if(!currentOut)chooseOutput();
+  }
+  if(mode==='live'&&!liveBusy){
+    const tr=stream&&stream.getAudioTracks()[0];
+    if(!tr||tr.readyState==='ended'){if(pickInput())startLive();}
+  }
+  evaluateGate();
+}
+navigator.mediaDevices?.addEventListener?.('devicechange',()=>{onDevicesChanged();});
+try{navigator.permissions?.query({name:'microphone'}).then(st=>{st.onchange=()=>{if(st.state==='granted'&&mode==='live'&&!stream)startLive();};}).catch(()=>{});}catch(e){}
+
+/* ---------- mode ---------- */
+function setMode(m){
+  mode=m;document.body.dataset.mode=m;
+  $('#tabLive').setAttribute('aria-selected',String(m==='live'));$('#tabFile').setAttribute('aria-selected',String(m==='file'));
+  $('#tagline').textContent=m==='live'?'PCの音を、少しだけ遠い記憶の音にする':'手元の曲を、少しだけ遠い記憶の音にする';
+  if(N.inLive){const t=ctx.currentTime;N.inLive.gain.setTargetAtTime(m==='live'?1:0,t,.03);N.inFile.gain.setTargetAtTime(m==='file'?1:0,t,.03);}
+  if(m==='live'){stopAll();if(!stream)startLive();}
+  else clearNotice('silent','nocable','inlost','outpick','perm');
+  silentSince=null;updateLabel();updateRun();evaluateGate();persist();
+}
+$('#tabLive').onclick=()=>{if(mode!=='live')setMode('live');};
+$('#tabFile').onclick=()=>{if(mode!=='file'){setMode('file');init().then(()=>{if(!devices.labels)refreshDevices().then(chooseOutput);});}};
+
+function updateLabel(){
+  const L=$('#nowLabel');L.innerHTML='';
+  if(mode==='live'){
+    const b=document.createElement('span');b.className='live';b.textContent='LIVE';L.append(b);
+    const tr=stream&&stream.getAudioTracks()[0];
+    L.append(tr?(tr.label||'入力デバイス'):'入力を待っています');
+  }else{
+    const tr=tracks[cur];L.append(tr.name);const sm=document.createElement('small');sm.textContent=(cur%2?'B面':'A面');L.append(sm);
+  }
+}
+function updateRun(){
+  const liveOn=mode==='live'&&!!stream&&stream.active&&ctx&&ctx.state==='running';
+  $('#deck').classList.toggle('playing',mode==='live'?liveOn:playing);
+  $('#liveDot').classList.toggle('on',!!liveOn);
+  let txt;
+  if(mode!=='live')txt='';
+  else if(!stream)txt=liveBusy?'接続中…':'入力なし';
+  else if(!ctx||ctx.state!=='running')txt='一時停止中（クリックで開始）';
+  else{const ms=Math.round(((ctx.baseLatency||0)+(ctx.outputLatency||0)+.008)*1000);
+    const st=stream.getAudioTracks()[0]?.getSettings?.()||{};
+    txt=`受信中 · ${Math.round((st.sampleRate||ctx.sampleRate)/1000*10)/10} kHz · ${st.channelCount||2}ch · 遅れ 約${ms} ms`;}
+  $('#liveTxt').textContent=txt;
+  updateConnSum();
+}
+
+/* ---------- demo synth (sample loop) ---------- */
+let demoOn=false,demoTimer=null,nextT=0,step=0;
+const CH=[[53,57,60,64],[52,55,59,62],[50,53,57,60],[48,52,55,59]];
+const MEL=[72,null,69,71,72,null,76,null, 71,null,67,69,71,null,74,null, 69,null,65,67,69,null,72,71, 67,null,64,null,67,69,71,null];
+const hz=m=>440*Math.pow(2,(m-69)/12);
+function note(m,t,dur,type,v,dest){const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=hz(m);o.detune.value=(Math.random()-.5)*8;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.015);g.gain.exponentialRampToValueAtTime(.0008,t+dur);o.connect(g).connect(dest);o.start(t);o.stop(t+dur+.05);}
+function sched(){const spb=60/78/2;while(nextT<ctx.currentTime+.4){const bar=Math.floor(step/8)%4;
+  if(step%8===0)CH[bar].forEach((m,i)=>{note(m,nextT+i*.02,spb*8.5,'triangle',.07,N.demo);note(m-12*(i===0),nextT,spb*8.5,'sine',.05,N.demo);});
+  if(step%8===4)CH[bar].forEach((m,i)=>note(m+12,nextT+i*.03,spb*3,'sine',.025,N.demo));
+  const mm=MEL[step%32];if(mm)note(mm,nextT,spb*2.2,'sine',.09,N.demo);
+  if(step%4===0){const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.setValueAtTime(110,nextT);o.frequency.exponentialRampToValueAtTime(45,nextT+.18);g.gain.setValueAtTime(.35,nextT);g.gain.exponentialRampToValueAtTime(.001,nextT+.3);o.connect(g).connect(N.demo);o.start(nextT);o.stop(nextT+.35);}
+  nextT+=spb;step++;}}
+function demoStart(){if(demoOn)return;demoOn=true;nextT=ctx.currentTime+.05;N.demo.gain.setTargetAtTime(1,ctx.currentTime,.05);demoTimer=setInterval(sched,100);sched();}
+function demoStop(){if(!demoOn)return;demoOn=false;clearInterval(demoTimer);N.demo.gain.setTargetAtTime(0,ctx.currentTime,.05);}
+
+/* ---------- playlist ---------- */
+let tracks=[{name:'夜のサンプル・ループ',demo:true}],cur=0,playing=false;
+function renderList(){const l=$('#list');l.innerHTML='';tracks.forEach((tr,i)=>{const li=document.createElement('li');li.className=(i===cur?'cur ':'')+(tr.demo?'demo':'');
+  li.innerHTML=`<span class="n">${String(i+1).padStart(2,'0')}</span><span class="t"></span>`;li.querySelector('.t').textContent=tr.name;li.onclick=()=>{load(i);play();};l.appendChild(li);});}
+renderList();
+function load(i){stopAll();cur=(i+tracks.length)%tracks.length;const tr=tracks[cur];
+  if(!tr.demo)audio.src=tr.url;$('#tDur').textContent=tr.demo?'∞':'0:00';$('#tCur').textContent='0:00';$('#seekBar').value=0;renderList();updateLabel();}
+function stopAll(){audio.pause();if(ctx)demoStop();setPlaying(false);}
+async function play(){if(mode!=='file')return;await init();if(ctx.state!=='running')await ctx.resume();const tr=tracks[cur];
+  if(tr.demo)demoStart();else{try{await audio.play();}catch(e){return;}}setPlaying(true);}
+function pause(){if(tracks[cur].demo){if(ctx)demoStop();}else audio.pause();setPlaying(false);}
+function setPlaying(p){playing=p;$('#playBtn').textContent=p?'❚❚ 停止':'▶ 再生';updateRun();}
+$('#playBtn').onclick=()=>playing?pause():play();
+$('#nextBtn').onclick=()=>{const w=playing;load(cur+1);if(w)play();};
+$('#prevBtn').onclick=()=>{const w=playing;load(cur-1);if(w)play();};
+audio.addEventListener('ended',()=>{if(cur<tracks.length-1){load(cur+1);play();}else setPlaying(false);});
+const fmtT=s=>isFinite(s)?`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`:'0:00';
+audio.addEventListener('timeupdate',()=>{$('#tCur').textContent=fmtT(audio.currentTime);$('#tDur').textContent=fmtT(audio.duration);if(audio.duration)$('#seekBar').value=audio.currentTime/audio.duration*1000;});
+$('#seekBar').addEventListener('input',e=>{if(!tracks[cur].demo&&audio.duration)audio.currentTime=e.target.value/1000*audio.duration;});
+function addFiles(files){const fresh=[...files].filter(f=>f.type.startsWith('audio/')||/\.(mp3|m4a|wav|flac|ogg|aac|opus)$/i.test(f.name));if(!fresh.length)return;
+  if(mode!=='file')setMode('file');
+  const first=tracks.length;fresh.forEach(f=>tracks.push({name:f.name.replace(/\.[^.]+$/,''),url:URL.createObjectURL(f)}));load(first);play();}
+$('#fileIn').addEventListener('change',e=>{addFiles(e.target.files);e.target.value='';});
+const drop=$('#drop');
+['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();if(ev==='drop'||e.target===document.documentElement)drop.classList.remove('over');}));
+document.addEventListener('drop',e=>{if(e.dataTransfer?.files?.length)addFiles(e.dataTransfer.files);});
+
+/* ---------- keyboard ---------- */
+const typingIn=t=>t&&(t.matches?.('input[type=text],textarea,select')||t.isContentEditable);
+addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||typingIn(e.target))return;
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)setPower(!power);}
+  else if(e.code==='KeyB'){e.preventDefault();if(!e.repeat)abOn();}
+  else{const m=/^(?:Digit|Numpad)([1-8])$/.exec(e.code);if(m&&!e.repeat){e.preventDefault();applyPreset(PNAMES[+m[1]-1]);}}
+});
+addEventListener('keyup',e=>{
+  if(e.code==='KeyB')abOff();
+  if(e.code==='Space'&&!typingIn(e.target))e.preventDefault();
+});
+
+/* ---------- close guard ---------- */
+addEventListener('beforeunload',e=>{if(mode==='live'&&stream){e.preventDefault();e.returnValue='閉じると音が出なくなります';return e.returnValue;}});
+
+/* ---------- level metering & silence watch ---------- */
+const mbuf=new Float32Array(2048);
+let lvl=-140,clipAt=0,silentSince=null,lastPk=0,compDb=0;
+const fbuf=new Float32Array(2048);
+setInterval(()=>{
+  if(!ctx||!N.inAn)return;
+  N.inAn.getFloatTimeDomainData(mbuf);
+  let s=0,pk=0;for(let i=0;i<mbuf.length;i++){const v=mbuf[i];s+=v*v;const a=v<0?-v:v;if(a>pk)pk=a;}
+  const rms=Math.sqrt(s/mbuf.length);lvl=rms>1e-7?20*Math.log10(rms):-140;
+  const now=Date.now();if(pk>.98)clipAt=now;
+  lastPk=pk;
+  // 音量補正：エフェクト後の音量を原音の音量へゆっくり近づける（無音中は止める）
+  if(N.fxAn&&N.comp){
+    let target=0;
+    if(autoGain&&power&&rms>1e-3){
+      N.fxAn.getFloatTimeDomainData(fbuf);let fs=0;for(let i=0;i<fbuf.length;i++)fs+=fbuf[i]*fbuf[i];
+      const frms=Math.sqrt(fs/fbuf.length);
+      if(frms>1e-5){target=compDb+20*Math.log10(rms/frms);}else target=compDb;
+    }else if(autoGain&&power)target=compDb;
+    target=Math.max(-30,Math.min(6,target));
+    compDb+=(target-compDb)*.04;
+    N.comp.gain.setTargetAtTime(Math.pow(10,compDb/20),ctx.currentTime,.1);
+    $('#agV').textContent=autoGain?`${compDb>=0?'+':''}${compDb.toFixed(1)} dB`:'';
+  }
+  const live=mode==='live'&&stream&&stream.active&&ctx.state==='running';
+  if(live&&pk<3e-4){
+    if(silentSince===null)silentSince=now;
+    else if(now-silentSince>5000&&!notes.has('silent'))notice('silent','warn','5秒以上、音が届いていません',
+      '<p>Windowsの出力先が「CABLE Input」になっているか確認してください（設定 → システム → サウンド → 出力）。何も再生していないだけなら問題ありません。</p>');
+  }else{silentSince=null;if(notes.has('silent'))clearNotice('silent');}
+},50);
+
+/* ---------- VU meter ---------- */
+const vu=$('#vu'),vg=vu.getContext('2d');
+const cv=$('#cv'),g=cv.getContext('2d');
+function fit(){const d=Math.min(devicePixelRatio||1,2);[vu,cv].forEach(c=>{const r=c.getBoundingClientRect();c.width=Math.max(1,Math.round(r.width*d));c.height=Math.max(1,Math.round(r.height*d));});}
+fit();addEventListener('resize',fit);
+const VU_TOP=Math.pow(10,3/20),vpos=db=>(Math.pow(10,db/20)-.1)/(VU_TOP-.1);
+const VU_MARKS=[-20,-10,-7,-5,-3,-2,-1,0,1,2,3];
+let vuPos=0;
+function drawVU(dt){
+  const W=vu.width,H=vu.height,d=Math.min(devicePixelRatio||1,2);
+  const gr=vg.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#f1e2d2');gr.addColorStop(1,'#d8c2b2');
+  vg.fillStyle=gr;vg.fillRect(0,0,W,H);
+  const glow=vg.createRadialGradient(W/2,H*.9,0,W/2,H*.9,W*.6);glow.addColorStop(0,'#ffdcb455');glow.addColorStop(1,'#ffdcb400');vg.fillStyle=glow;vg.fillRect(0,0,W,H);
+  const R=Math.min(H*1.05,W*.62),cx=W/2,cy=H*.18+R,A=.8;
+  const ang=p=>-Math.PI/2-A+p*2*A;
+  const rr=R*.82;
+  vg.lineCap='butt';
+  vg.lineWidth=1.4*d;vg.strokeStyle='#3b2c2c';vg.beginPath();vg.arc(cx,cy,rr,ang(0),ang(vpos(0)));vg.stroke();
+  vg.lineWidth=5*d;vg.strokeStyle='#c4566e';vg.beginPath();vg.arc(cx,cy,rr+2.5*d,ang(vpos(0)),ang(1));vg.stroke();
+  vg.font=`${10*d}px "DM Mono",Consolas,monospace`;vg.textAlign='center';vg.textBaseline='middle';
+  VU_MARKS.forEach(db=>{const a=ang(vpos(db)),c=Math.cos(a),s=Math.sin(a),big=db%5===0||db===-7||db===-3||db>=0;
+    vg.strokeStyle=db>0?'#b0455c':'#3b2c2c';vg.lineWidth=(big?1.6:1)*d;
+    vg.beginPath();vg.moveTo(cx+c*rr,cy+s*rr);vg.lineTo(cx+c*(rr-(big?9:5)*d),cy+s*(rr-(big?9:5)*d));vg.stroke();
+    vg.fillStyle=db>0?'#b0455c':'#4a3838';vg.fillText(db>0?'+'+db:String(Math.abs(db)),cx+c*(rr+11*d),cy+s*(rr+11*d));});
+  vg.font=`${17*d}px "Zen Kurenaido",serif`;vg.fillStyle='#5a4646';vg.fillText('VU',cx,cy-R*.42);
+  vg.font=`${9*d}px "DM Mono",Consolas,monospace`;vg.fillStyle='#7d6868';vg.textAlign='left';vg.fillText('INPUT',8*d,H-10*d);
+  // ballistics (~300 ms)
+  const target=Math.max(-.04,Math.min(1.08,vpos(lvl+18)));
+  vuPos+=(target-vuPos)*(1-Math.exp(-dt/.09));
+  const a=ang(vuPos);vg.strokeStyle='#2a1d1d';vg.lineWidth=1.6*d;vg.lineCap='round';
+  vg.beginPath();vg.moveTo(cx+Math.cos(a)*R*.25,cy+Math.sin(a)*R*.25);vg.lineTo(cx+Math.cos(a)*(rr+4*d),cy+Math.sin(a)*(rr+4*d));vg.stroke();
+  // peak lamp
+  const hot=Date.now()-clipAt<700;vg.beginPath();vg.arc(W-14*d,13*d,4.5*d,0,Math.PI*2);vg.fillStyle=hot?'#e0485f':'#b9a59a';vg.fill();
+  if(hot){vg.beginPath();vg.arc(W-14*d,13*d,9*d,0,Math.PI*2);vg.fillStyle='#e0485f33';vg.fill();}
+  vg.textAlign='right';vg.fillStyle='#7d6868';vg.fillText(lvl>-100?`${lvl.toFixed(0)} dBFS`:'—',W-8*d,H-10*d);
+  // inner shadow
+  const sh=vg.createLinearGradient(0,H-18*d,0,H);sh.addColorStop(0,'#00000000');sh.addColorStop(1,'#00000022');vg.fillStyle=sh;vg.fillRect(0,H-18*d,W,18*d);
+}
+
+/* ---------- output scope ---------- */
+let sbuf=null,ph=0,lastT=0;
+function drawScope(){const W=cv.width,H=cv.height;
+  g.fillStyle='rgba(16,13,22,.35)';g.fillRect(0,0,W,H);
+  let data=null;if(ctx&&N.an){sbuf=sbuf||new Float32Array(N.an.fftSize);N.an.getFloatTimeDomainData(sbuf);data=sbuf;}
+  ph+=.02;
+  const line=(off,col)=>{g.beginPath();g.strokeStyle=col;g.lineWidth=Math.max(1.5,W/500);
+    const n=data?data.length:256;for(let i=0;i<n;i+=2){const x=i/(n-1)*W;const v=data?data[i]:Math.sin(i/18+ph)*.08*Math.sin(ph*.7+i/90);const y=H/2+v*H*.42+off;i?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();};
+  g.globalCompositeOperation='lighter';
+  const sh=1+state.wow*3;line(-sh,'rgba(217,139,160,.55)');line(sh,'rgba(159,183,201,.55)');line(0,'rgba(242,198,160,.75)');
+  g.globalCompositeOperation='source-over';
+  g.fillStyle='rgba(0,0,0,.22)';for(let y=0;y<H;y+=4)g.fillRect(0,y,W,1);
+  if(state.hiss>0&&power){g.fillStyle=`rgba(236,228,240,${state.hiss*.08})`;for(let i=0;i<120*state.hiss;i++)g.fillRect(Math.random()*W,Math.random()*H,1.5,1.5);}
+}
+function frame(t){requestAnimationFrame(frame);const dt=lastT?Math.min(.1,(t-lastT)/1000):.016;lastT=t;drawVU(dt);drawScope();}
+requestAnimationFrame(frame);
+setInterval(()=>{if(mode==='live')updateRun();},2000);
+// 診断表示（接続設定の中）
+setInterval(()=>{
+  const el=$('#diag');if(!$('#conn').open||mode!=='live'){return;}
+  const tr=stream&&stream.getAudioTracks()[0],st=tr?.getSettings?.()||{};
+  const db=v=>v>1e-7?(20*Math.log10(v)).toFixed(1)+' dBFS':'無音(0)';
+  el.textContent=[
+    `AudioContext : ${ctx?ctx.state+' / '+ctx.sampleRate+'Hz':'未作成'}`,
+    `入力トラック : ${tr?`${tr.readyState} / enabled=${tr.enabled} / muted=${tr.muted}`:'なし'}`,
+    `入力デバイス : ${tr?tr.label:'-'}`,
+    `入力設定     : ${tr?`${st.sampleRate||'?'}Hz ${st.channelCount||'?'}ch ec=${st.echoCancellation} ns=${st.noiseSuppression} agc=${st.autoGainControl}`:'-'}`,
+    `入力ゲイン   : ${N.inLive?N.inLive.gain.value.toFixed(2):'-'}  出力ゲート: ${N.gate?N.gate.gain.value.toFixed(2):'-'}`,
+    `入力ピーク   : ${ctx?db(lastPk):'-'}`,
+    `出力先       : ${currentOut?outLabel(currentOut):'未選択'}`,
+  ].join(String.fromCharCode(10));
+},250);
+
+/* ---------- boot ---------- */
+window.__zankyo={get ctx(){return ctx;},N,get state(){return state;},get power(){return power;}}; // デバッグ用
+
+document.body.dataset.mode=mode;
+$('#conn').open=!prefs.outId;
+setMode(mode);
+if(mode==='file')init().then(()=>refreshDevices()).then(()=>chooseOutput()).catch(()=>{});
+if(document.fonts)document.fonts.ready.then(fit);
+})();
+</script>
+</body>
+</html>
